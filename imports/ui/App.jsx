@@ -19,12 +19,7 @@ class App extends Component {
     event.preventDefault();
     const text = ReactDOM.findDOMNode(this.refs.textInput).value.trim();
    
-    Tasks.insert({
-	text,
-        createdAt: new Date(),
-	owner: Meteor.userId(),
-	username: Meteor.user().username,
-    });
+    Meteor.call('tasks.insert',text);
     
     ReactDOM.findDOMNode(this.refs.textInput).value = '';
   }
@@ -44,10 +39,11 @@ class App extends Component {
     else {
       filteredTasks = taasks;
     }
-    filteredTasks = filteredTasks.filter(task => (task.username == Meteor.user().username));
-    return filteredTasks.map((task) => (
-	<Task key={task._id} task={task} />
-     ));
+    filteredTasks = filteredTasks.filter(task => (task.username == this.props.currentUser.username));
+    return filteredTasks.map((task) => {
+	const showPrivateButton = task.owner === (this.props.currentUser && this.props.currentUser._id);
+	return(<Task key={task._id} task={task} showPrivateButton={showPrivateButton}/>)
+     });
   }
 
   render() {
@@ -57,7 +53,7 @@ class App extends Component {
 	    { this.props.currentUser ? 
 	      <div>
 	      <header>
-	        <h1> Todo ({this.props.incompleteCount})</h1>
+	        <h1> Todo </h1>
 	        <label className='hide-completed'>
 		  <input type='checkbox' readOnly checked={this.state.hideCompleted} onClick={this.toggleHideCompleted.bind(this)} />
 		  Hide Completed Task
@@ -79,14 +75,13 @@ class App extends Component {
 
 App.propTypes = {
   tasks: PropTypes.array.isRequired,
-  incompleteCount: PropTypes.number.isRequired,
   currentUser: PropTypes.object,
 }
 
 export default createContainer(() => {
+  Meteor.subscribe('tasks');
   return {
     tasks: Tasks.find({ }, { sort: {createdAt: -1} }).fetch(),
-    incompleteCount: Tasks.find({ checked: { $ne:true } }).count(),
     currentUser: Meteor.user(),
   };
 }, App);
